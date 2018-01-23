@@ -1,6 +1,5 @@
 FROM alpine:latest
-MAINTAINER Grant McInnes <grant.mcinnes@eyesopen.ca>
-      Description="Lightweight WordPress container with Nginx 1.12 & PHP-FPM 7.1 based on Alpine Linux."
+MAINTAINER Grant McInnes <grant.mcinnes@eyesopen.ca>      Description="Lightweight WordPress container with Nginx 1.12 & PHP-FPM 7.1 based on Alpine Linux."
 
 # Install packages
 RUN apk --no-cache add php7 php7-fpm php7-mysqli php7-json php7-openssl php7-curl \
@@ -10,6 +9,7 @@ RUN apk --no-cache add php7 php7-fpm php7-mysqli php7-json php7-openssl php7-cur
     --repository http://dl-cdn.alpinelinux.org/alpine/edge/main/ \
     --repository http://dl-cdn.alpinelinux.org/alpine/edge/community/ \
     --repository http://dl-4.alpinelinux.org/alpine/edge/testing
+
 
 # Configure nginx
 COPY config/nginx.conf /etc/nginx/nginx.conf
@@ -54,6 +54,32 @@ RUN chown nobody.nobody /usr/src/wordpress/wp-secrets.php && chmod 640 /usr/src/
 # RUN chmod 755 /var/www/wp-content/uploads 2> /dev/null
 # RUN chmod 777 /var/www/wp-content/cache 2> /dev/null
 # RUN chmod 777 /var/www/wp-content/w3tc-config 2> /dev/null
+
+
+WORKDIR /git-server/
+RUN apk add --no-cache \
+  openssh git
+RUN ssh-keygen -A
+COPY git-shell-commands /home/git/git-shell-commands
+
+# -D flag avoids password generation
+# -s flag changes user's shell
+RUN mkdir /git-server/keys \
+  && adduser -D -s /usr/bin/git-shell git \
+  && echo git:12345 | chpasswd \
+  && mkdir /home/git/.ssh
+
+# This is a login shell for SSH accounts to provide restricted Git access.
+# It permits execution only of server-side Git commands implementing the
+# pull/push functionality, plus custom commands present in a subdirectory
+# named git-shell-commands in the user’s home directory.
+# More info: https://git-scm.com/docs/git-shell
+COPY git-shell-commands /home/git/git-shell-commands
+
+# sshd_config file is edited for enable access key and disable access password
+COPY config/sshd_config /etc/ssh/sshd_config
+
+EXPOSE 22
 
 # Entrypoint to copy wp-content
 COPY entrypoint.sh /entrypoint.sh
