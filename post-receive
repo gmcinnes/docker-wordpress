@@ -88,7 +88,7 @@ do
     # these two environment variables could also be passed as parameters to the git cli
     echo "githook: I will deploy '${DEPLOY_BRANCH}' branch of the '${DEPLOY_APP_NAME}' project to '${DEPLOY_ROOT}'"
     sudo -u nobody git checkout -f "${DEPLOY_BRANCH}" || exit 1
-    git -u nobody reset --hard "$DEPLOY_NEWREV" || exit 1
+    sudo -u nobody git reset --hard "$DEPLOY_NEWREV" || exit 1
 
     if [ ! -z "${POST_UPDATE_CMD}" ]; then
        echo
