@@ -56,16 +56,19 @@ RUN chown nobody.nobody /usr/src/wordpress/wp-secrets.php && chmod 640 /usr/src/
 # RUN chmod 777 /var/www/wp-content/w3tc-config 2> /dev/null
 
 
-WORKDIR /git-server/
-RUN apk add --no-cache \
-  openssh git
+# WORKDIR /git-server/
+RUN apk add --no-cache openssh git
 RUN ssh-keygen -A
-COPY git-shell-commands /home/git/git-shell-commands
 
 # -D flag avoids password generation
 # -s flag changes user's shell
-RUN mkdir /git-server/keys \
-  && adduser -D -s /usr/bin/git-shell git \
+# RUN mkdir  -p /git-server/keys \
+#   && adduser -D -s /usr/bin/git-shell git \
+#   && echo git:12345 | chpasswd \
+#   && mkdir /home/git/.ssh
+# # WORKDIR /var/www/wp-content
+RUN mkdir  -p /git-server/keys \
+  && adduser -D git \
   && echo git:12345 | chpasswd \
   && mkdir /home/git/.ssh
 
@@ -74,12 +77,16 @@ RUN mkdir /git-server/keys \
 # pull/push functionality, plus custom commands present in a subdirectory
 # named git-shell-commands in the user’s home directory.
 # More info: https://git-scm.com/docs/git-shell
-COPY git-shell-commands /home/git/git-shell-commands
+# COPY git-shell-commands /home/git/git-shell-commands
 
 # sshd_config file is edited for enable access key and disable access password
 COPY config/sshd_config /etc/ssh/sshd_config
 
 EXPOSE 22
+
+RUN mkdir -p /home/git/project.git
+WORKDIR /home/git/project.git
+RUN git init --bare
 
 # Entrypoint to copy wp-content
 COPY entrypoint.sh /entrypoint.sh

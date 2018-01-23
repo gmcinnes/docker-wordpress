@@ -30,6 +30,14 @@ services:
       # For debugging only:
       #WP_DEBUG: "true"
       #WP_DEBUG_DISPLAY: "true"
+  
+  git-server:
+    build: ./
+    ports:
+      - "2222:22"
+    volumes:
+    - ~/git-server/keys:/git-server/keys
+    - ~/git-server/repos:/git-server/repos
 
 volumes:
   db-data:
