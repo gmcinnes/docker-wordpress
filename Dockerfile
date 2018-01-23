@@ -4,7 +4,7 @@ MAINTAINER Grant McInnes <grant.mcinnes@eyesopen.ca>      Description="Lightweig
 # Install packages
 RUN apk --no-cache add php7 php7-fpm php7-mysqli php7-json php7-openssl php7-curl \
     php7-zlib php7-xml php7-phar php7-intl php7-dom php7-xmlreader php7-ctype \
-    php7-mbstring php7-gd nginx supervisor curl bash \
+    php7-mbstring php7-gd nginx supervisor curl bash sudo \
     php7-mcrypt php7-opcache php7-apcu php7-bcmath php7-redis \
     --repository http://dl-cdn.alpinelinux.org/alpine/edge/main/ \
     --repository http://dl-cdn.alpinelinux.org/alpine/edge/community/ \
@@ -26,25 +26,25 @@ WORKDIR /var/www/wp-content
 RUN chown -R nobody.nobody /var/www
 
 # WordPress
-ENV WORDPRESS_VERSION 4.9.1
-ENV WORDPRESS_SHA1 892d2c23b9d458ec3d44de59b753adb41012e903
-
-RUN mkdir -p /usr/src
-
-# Upstream tarballs include ./wordpress/ so this gives us /usr/src/wordpress
-RUN curl -o wordpress.tar.gz -SL https://wordpress.org/wordpress-${WORDPRESS_VERSION}.tar.gz \
-  && echo "$WORDPRESS_SHA1 *wordpress.tar.gz" | sha1sum -c - \
-  && tar -xzf wordpress.tar.gz -C /usr/src/ \
-  && rm wordpress.tar.gz \
-  && chown -R nobody.nobody /usr/src/wordpress
-
-# WP config
-COPY wp-config.php /usr/src/wordpress
-RUN chown nobody.nobody /usr/src/wordpress/wp-config.php && chmod 640 /usr/src/wordpress/wp-config.php
-
-# Append WP secrets
-COPY wp-secrets.php /usr/src/wordpress
-RUN chown nobody.nobody /usr/src/wordpress/wp-secrets.php && chmod 640 /usr/src/wordpress/wp-secrets.php
+# ENV WORDPRESS_VERSION 4.9.1
+# ENV WORDPRESS_SHA1 892d2c23b9d458ec3d44de59b753adb41012e903
+#
+# RUN mkdir -p /usr/src
+#
+# # Upstream tarballs include ./wordpress/ so this gives us /usr/src/wordpress
+# RUN curl -o wordpress.tar.gz -SL https://wordpress.org/wordpress-${WORDPRESS_VERSION}.tar.gz \
+#   && echo "$WORDPRESS_SHA1 *wordpress.tar.gz" | sha1sum -c - \
+#   && tar -xzf wordpress.tar.gz -C /usr/src/ \
+#   && rm wordpress.tar.gz \
+#   && chown -R nobody.nobody /usr/src/wordpress
+#
+# # WP config
+# COPY wp-config.php /usr/src/wordpress
+# RUN chown nobody.nobody /usr/src/wordpress/wp-config.php && chmod 640 /usr/src/wordpress/wp-config.php
+#
+# # Append WP secrets
+# COPY wp-secrets.php /usr/src/wordpress
+# RUN chown nobody.nobody /usr/src/wordpress/wp-secrets.php && chmod 640 /usr/src/wordpress/wp-secrets.php
 
 # Add custom themes, plugins and/or uploads
 # ADD wp-content /var/www/wp-content
@@ -56,7 +56,7 @@ RUN chown nobody.nobody /usr/src/wordpress/wp-secrets.php && chmod 640 /usr/src/
 # RUN chmod 777 /var/www/wp-content/w3tc-config 2> /dev/null
 
 
-# WORKDIR /git-server/
+WORKDIR /git-server/
 RUN apk add --no-cache openssh git
 RUN ssh-keygen -A
 
@@ -68,9 +68,9 @@ RUN ssh-keygen -A
 #   && mkdir /home/git/.ssh
 # # WORKDIR /var/www/wp-content
 RUN mkdir  -p /git-server/keys \
-  && adduser -D git \
+  && adduser -D git -h /git-server \
   && echo git:12345 | chpasswd \
-  && mkdir /home/git/.ssh
+  && mkdir /git-server/.ssh
 
 # This is a login shell for SSH accounts to provide restricted Git access.
 # It permits execution only of server-side Git commands implementing the
@@ -84,9 +84,9 @@ COPY config/sshd_config /etc/ssh/sshd_config
 
 EXPOSE 22
 
-RUN mkdir -p /home/git/project.git
-WORKDIR /home/git/project.git
-RUN git init --bare
+COPY post-receive /usr/src/post-receive
+COPY sudoers /etc/sudoers
+RUN chown root:root /etc/sudoers && chmod 440 /etc/sudoers
 
 # Entrypoint to copy wp-content
 COPY entrypoint.sh /entrypoint.sh

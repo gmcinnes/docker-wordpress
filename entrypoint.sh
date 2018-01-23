@@ -6,11 +6,20 @@ set -e
 # If there is some public key in keys folder
 # then it copies its contain in authorized_keys file
 if [ "$(ls -A /git-server/keys/)" ]; then
-  cd /home/git
+  cd /git-server
   cat /git-server/keys/*.pub > .ssh/authorized_keys
   chown -R git:git .ssh
   chmod 700 .ssh
   chmod -R 600 .ssh/*
+fi
+
+if [ ! -d /git-server/repos/project ]; then
+  cd /git-server/repos
+  mkdir -p project
+  cd project
+  git init --bare
+  cp /usr/src/post-receive hooks
+  chmod 755 hooks/post-receive
 fi
 
 # Checking permissions and fixing SGID bit in repos folder
@@ -22,14 +31,16 @@ if [ "$(ls -A /git-server/repos/)" ]; then
   find . -type d -exec chmod g+s '{}' +
 fi
 
-# Check if volume is empty
-if [ ! "$(ls -A "/var/www/wp-content" 2>/dev/null)" ]; then
-    echo 'Setting up wp-content volume'
-    # Copy wp-content from Wordpress src to volume
-    cp -r /usr/src/wordpress/wp-content /var/www/
-    chown -R nobody.nobody /var/www
+chown -R nobody.nobody /var/www
 
-    # Generate secrets
-    curl -f https://api.wordpress.org/secret-key/1.1/salt/ >> /usr/src/wordpress/wp-secrets.php
-fi
+# Check if volume is empty
+# if [ ! "$(ls -A "/var/www/wp-content" 2>/dev/null)" ]; then
+#     echo 'Setting up wp-content volume'
+#     # Copy wp-content from Wordpress src to volume
+#     cp -r /usr/src/wordpress/wp-content /var/www/
+#     chown -R nobody.nobody /var/www
+#
+#     # Generate secrets
+#     curl -f https://api.wordpress.org/secret-key/1.1/salt/ >> /usr/src/wordpress/wp-secrets.php
+# fi
 exec "$@"
